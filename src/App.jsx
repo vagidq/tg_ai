@@ -1,40 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
+import Mascot from './components/Mascot.jsx'
 
 const STYLES = [
   {
     id: 'cyberpunk',
     name: 'Киберпанк',
     icon: '⚡',
-    gradient: 'from-fuchsia-600 via-violet-600 to-cyan-500',
-    glow: 'hover:shadow-[0_0_24px_rgba(192,38,211,0.5)]',
+    gradient: 'from-neutral-700 via-neutral-800 to-neutral-950',
   },
   {
     id: 'anime',
     name: 'Аниме',
     icon: '✨',
-    gradient: 'from-pink-400 via-rose-400 to-purple-500',
-    glow: 'hover:shadow-[0_0_24px_rgba(244,114,182,0.5)]',
+    gradient: 'from-neutral-600 via-neutral-700 to-neutral-900',
   },
   {
     id: 'realism',
     name: 'Реализм',
     icon: '📷',
-    gradient: 'from-amber-700 via-stone-600 to-emerald-800',
-    glow: 'hover:shadow-[0_0_24px_rgba(180,83,9,0.4)]',
+    gradient: 'from-neutral-500 via-neutral-700 to-neutral-800',
   },
   {
     id: 'sketch',
     name: 'Эскиз',
     icon: '✏️',
-    gradient: 'from-neutral-500 via-neutral-400 to-neutral-600',
-    glow: 'hover:shadow-[0_0_24px_rgba(163,163,163,0.35)]',
+    gradient: 'from-neutral-400 via-neutral-600 to-neutral-700',
   },
 ]
+
+const glassCard =
+  'glass-panel rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md'
+const glassButton =
+  'glass-panel w-full rounded-2xl border border-white/15 bg-white/5 py-3.5 font-outfit text-base font-semibold text-neutral-100 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10 active:scale-[0.98]'
 
 function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function getMascotState(isGenerating, hasResult) {
+  if (isGenerating) return 'thinking'
+  if (hasResult) return 'success'
+  return 'idle'
 }
 
 function App() {
@@ -47,6 +55,8 @@ function App() {
 
   const selectedStyle = STYLES.find((style) => style.id === selectedStyleId)
   const canGenerate = Boolean(selectedStyle && selectedImage && !isGenerating && !hasResult)
+  const mascotState = getMascotState(isGenerating, hasResult)
+  const isMainScreen = !isGenerating && !hasResult
 
   function handleStyleSelect(style) {
     setSelectedStyleId(style.id)
@@ -133,10 +143,10 @@ function App() {
     ? 'Подождите немного...'
     : hasResult
       ? 'Готово!'
-      : 'Выберите стиль для генерации'
+      : 'Выбери стиль и загрузи фото'
 
   return (
-    <main className="min-h-screen bg-[#121212] px-4 py-8 text-[#f5f5f5] sm:px-6">
+    <main className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-black via-neutral-950 to-neutral-900 px-4 py-6 font-outfit text-neutral-100 sm:px-6 sm:py-8">
       <input
         ref={fileInputRef}
         type="file"
@@ -145,57 +155,71 @@ function App() {
         className="hidden"
       />
 
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
+      {isMainScreen && (
+        <div className="pointer-events-none fixed right-0 bottom-0 z-20 translate-x-4 translate-y-2 sm:translate-x-2 sm:translate-y-0">
+          <Mascot state="idle" size="xl" />
+        </div>
+      )}
+
+      <div
+        className={`animate-in relative z-10 mx-auto flex w-full max-w-lg flex-col gap-6 sm:gap-8 ${
+          isMainScreen ? 'pb-36 sm:pb-44' : ''
+        }`}
+      >
         <header className="text-center">
-          <h1 className="text-2xl font-medium leading-snug sm:text-3xl">
+          {!isMainScreen && (
+            <div className="mb-4 flex justify-center">
+              <Mascot state={mascotState} size="lg" />
+            </div>
+          )}
+          <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
             {greeting}
           </h1>
-          <p className="mt-2 text-sm text-neutral-400">{subtitle}</p>
+          <p className="mt-2 text-sm font-medium tracking-wide text-neutral-500">
+            {subtitle}
+          </p>
         </header>
 
         {isGenerating && (
-          <div className="flex flex-col items-center justify-center gap-8 py-20">
-            <div className="relative flex h-20 w-20 items-center justify-center">
-              <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-              <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-500/25 border-t-blue-500" />
-            </div>
-            <p className="animate-pulse text-lg font-medium text-neutral-300">
-              Генерируем ваш стиль...
+          <div className="animate-in flex flex-col items-center gap-6 pb-8">
+            <p className="text-pulse-muted text-xl font-bold tracking-tight text-neutral-300 sm:text-2xl">
+              Обработка нейросетью...
             </p>
           </div>
         )}
 
         {hasResult && selectedStyle && (
-          <div className="flex flex-col gap-6">
-            <h2 className="text-center text-xl font-semibold">Результат:</h2>
-            <div
-              className={`mx-auto h-64 w-full max-w-sm rounded-2xl bg-gradient-to-br shadow-lg ${selectedStyle.gradient}`}
-            />
-            <p className="text-center text-sm text-neutral-400">
-              Стиль: {selectedStyle.name}
+          <div className="animate-in flex flex-col gap-6">
+            <h2 className="text-center text-2xl font-black tracking-tight text-white">
+              Результат
+            </h2>
+            <div className={`${glassCard} p-3`}>
+              <div
+                className={`h-64 w-full rounded-xl bg-gradient-to-br ${selectedStyle.gradient}`}
+              />
+            </div>
+            <p className="text-center text-sm font-medium text-neutral-500">
+              Стиль:{' '}
+              <span className="text-neutral-200">{selectedStyle.name}</span>
             </p>
-            <button
-              type="button"
-              onClick={handleTryAgain}
-              className="w-full rounded-xl border border-white/15 bg-[#1e1e1e] py-3.5 text-base font-medium text-[#f5f5f5] transition-all duration-200 hover:border-blue-400/50 hover:bg-[#252525] active:scale-[0.98]"
-            >
+            <button type="button" onClick={handleTryAgain} className={glassButton}>
               Попробовать снова
             </button>
           </div>
         )}
 
-        {!isGenerating && !hasResult && (
+        {isMainScreen && (
           <>
             {selectedImage && (
-              <div className="flex flex-col items-center gap-2">
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1e1e1e] p-2 shadow-lg">
+              <div className="animate-in flex flex-col items-center gap-3">
+                <div className={`${glassCard} p-2`}>
                   <img
                     src={selectedImage.previewUrl}
                     alt="Загруженное фото"
                     className="h-40 w-40 rounded-xl object-cover sm:h-48 sm:w-48"
                   />
                 </div>
-                <p className="max-w-full truncate text-xs text-neutral-400">
+                <p className="max-w-full truncate text-xs font-medium text-neutral-600">
                   {selectedImage.name} · {formatFileSize(selectedImage.size)}
                 </p>
               </div>
@@ -211,21 +235,21 @@ function App() {
                     type="button"
                     onClick={() => handleStyleSelect(style)}
                     style={{ animationDelay: `${index * 80}ms` }}
-                    className={`animate-fade-in-down group flex flex-col overflow-hidden rounded-2xl border bg-[#1e1e1e] text-left transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] ${
+                    className={`animate-fade-in-down group flex flex-col overflow-hidden rounded-2xl border text-left backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98] ${
                       isSelected
-                        ? 'border-transparent ring-2 ring-blue-500'
-                        : 'border-white/10 hover:border-white/25'
-                    } ${style.glow}`}
+                        ? 'border-white/40 bg-white/10 ring-2 ring-white/30'
+                        : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10'
+                    }`}
                   >
                     <div
                       className={`flex h-24 items-center justify-center bg-gradient-to-br ${style.gradient} transition-transform duration-300 group-hover:scale-105 sm:h-28`}
                     >
-                      <span className="text-4xl drop-shadow-md" aria-hidden="true">
+                      <span className="text-4xl drop-shadow-lg" aria-hidden="true">
                         {style.icon}
                       </span>
                     </div>
                     <div className="px-3 py-3">
-                      <span className="text-sm font-semibold tracking-wide sm:text-base">
+                      <span className="text-sm font-bold tracking-tight text-neutral-200 sm:text-base">
                         {style.name}
                       </span>
                     </div>
@@ -238,7 +262,7 @@ function App() {
               <button
                 type="button"
                 onClick={handleSelectPhotoClick}
-                className="w-full rounded-xl border border-white/15 bg-[#1e1e1e] py-3.5 text-base font-medium text-[#f5f5f5] transition-all duration-200 hover:border-blue-400/50 hover:bg-[#252525] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] active:scale-[0.98]"
+                className={glassButton}
               >
                 {selectedImage ? 'Изменить фото' : 'Выбрать фото'}
               </button>
@@ -248,7 +272,7 @@ function App() {
               <button
                 type="button"
                 onClick={handleGenerate}
-                className="w-full rounded-xl bg-blue-500 py-3.5 text-base font-semibold text-white transition-colors hover:bg-blue-400 active:bg-blue-600"
+                className="w-full rounded-2xl bg-white py-4 text-base font-black tracking-tight text-black transition-all duration-300 hover:bg-neutral-200 active:scale-[0.98]"
               >
                 Сгенерировать
               </button>
