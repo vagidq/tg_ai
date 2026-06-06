@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const STYLES = [
   {
@@ -31,15 +31,50 @@ const STYLES = [
   },
 ]
 
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 function App() {
   const [selectedStyleId, setSelectedStyleId] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(null)
+  const fileInputRef = useRef(null)
   const user = window.Telegram?.WebApp?.initDataUnsafe?.user || null
 
   const selectedStyle = STYLES.find((style) => style.id === selectedStyleId)
+  const canGenerate = Boolean(selectedStyle && selectedImage)
 
   function handleStyleSelect(style) {
     setSelectedStyleId(style.id)
     console.log(`Выбран стиль: ${style.name}`)
+  }
+
+  function handleSelectPhotoClick() {
+    fileInputRef.current?.click()
+  }
+
+  function handleFileChange(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    console.log('Имя файла:', file.name)
+    console.log('Размер файла:', formatFileSize(file.size))
+
+    setSelectedImage((prev) => {
+      if (prev?.previewUrl) {
+        URL.revokeObjectURL(prev.previewUrl)
+      }
+      return {
+        file,
+        name: file.name,
+        size: file.size,
+        previewUrl: URL.createObjectURL(file),
+      }
+    })
+
+    event.target.value = ''
   }
 
   useEffect(() => {
@@ -52,12 +87,28 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (selectedImage?.previewUrl) {
+        URL.revokeObjectURL(selectedImage.previewUrl)
+      }
+    }
+  }, [selectedImage])
+
   const greeting = user
     ? `Привет, ${user.first_name}!`
     : 'Привет, гость!'
 
   return (
     <main className="min-h-screen bg-[#121212] px-4 py-8 text-[#f5f5f5] sm:px-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
         <header className="text-center">
           <h1 className="text-2xl font-medium leading-snug sm:text-3xl">
@@ -68,40 +119,65 @@ function App() {
           </p>
         </header>
 
+        {selectedImage && (
+          <div className="flex flex-col items-center gap-2">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1e1e1e] p-2 shadow-lg">
+              <img
+                src={selectedImage.previewUrl}
+                alt="Загруженное фото"
+                className="h-40 w-40 rounded-xl object-cover sm:h-48 sm:w-48"
+              />
+            </div>
+            <p className="max-w-full truncate text-xs text-neutral-400">
+              {selectedImage.name} · {formatFileSize(selectedImage.size)}
+            </p>
+          </div>
+        )}
+
         <section className="grid grid-cols-2 gap-4">
           {STYLES.map((style, index) => {
             const isSelected = selectedStyleId === style.id
 
             return (
-            <button
-              key={style.id}
-              type="button"
-              onClick={() => handleStyleSelect(style)}
-              style={{ animationDelay: `${index * 80}ms` }}
-              className={`animate-fade-in-down group flex flex-col overflow-hidden rounded-2xl border bg-[#1e1e1e] text-left transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] ${
-                isSelected
-                  ? 'border-transparent ring-2 ring-blue-500'
-                  : 'border-white/10 hover:border-white/25'
-              } ${style.glow}`}
-            >
-              <div
-                className={`flex h-24 items-center justify-center bg-gradient-to-br ${style.gradient} transition-transform duration-300 group-hover:scale-105 sm:h-28`}
+              <button
+                key={style.id}
+                type="button"
+                onClick={() => handleStyleSelect(style)}
+                style={{ animationDelay: `${index * 80}ms` }}
+                className={`animate-fade-in-down group flex flex-col overflow-hidden rounded-2xl border bg-[#1e1e1e] text-left transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] ${
+                  isSelected
+                    ? 'border-transparent ring-2 ring-blue-500'
+                    : 'border-white/10 hover:border-white/25'
+                } ${style.glow}`}
               >
-                <span className="text-4xl drop-shadow-md" aria-hidden="true">
-                  {style.icon}
-                </span>
-              </div>
-              <div className="px-3 py-3">
-                <span className="text-sm font-semibold tracking-wide sm:text-base">
-                  {style.name}
-                </span>
-              </div>
-            </button>
+                <div
+                  className={`flex h-24 items-center justify-center bg-gradient-to-br ${style.gradient} transition-transform duration-300 group-hover:scale-105 sm:h-28`}
+                >
+                  <span className="text-4xl drop-shadow-md" aria-hidden="true">
+                    {style.icon}
+                  </span>
+                </div>
+                <div className="px-3 py-3">
+                  <span className="text-sm font-semibold tracking-wide sm:text-base">
+                    {style.name}
+                  </span>
+                </div>
+              </button>
             )
           })}
         </section>
 
         {selectedStyle && (
+          <button
+            type="button"
+            onClick={handleSelectPhotoClick}
+            className="w-full rounded-xl border border-white/15 bg-[#1e1e1e] py-3.5 text-base font-medium text-[#f5f5f5] transition-all duration-200 hover:border-blue-400/50 hover:bg-[#252525] hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] active:scale-[0.98]"
+          >
+            {selectedImage ? 'Изменить фото' : 'Выбрать фото'}
+          </button>
+        )}
+
+        {canGenerate && (
           <button
             type="button"
             className="w-full rounded-xl bg-blue-500 py-3.5 text-base font-semibold text-white transition-colors hover:bg-blue-400 active:bg-blue-600"
